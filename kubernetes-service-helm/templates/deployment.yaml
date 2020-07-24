@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "service.fullname" . }}
+  labels:
+    {{- include "service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "service.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository | replace "develop" .Values.repo }}:{{ .Values.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: appAdminPassword
+              valueFrom:
+                secretKeyRef:
+                  key: appAdminPassword
+                  name: secrets
+            - name: secret.key
+              valueFrom:
+                secretKeyRef:
+                  key: secret.key
+                  name: secrets
+          envFrom:
+            - configMapRef:
+                name: {{ include "service.fullname" . }}-{{ .Values.env }}-config
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /applogs/{{ .Chart.Name }}
+              name: {{ include "service.fullname" . }}-app-logs
+            - mountPath: /accesslogs/{{ .Chart.Name }}
+              name: {{ include "service.fullname" . }}-access-logs
+
+        - name: {{ include "service.fullname" . }}-splunk-forwarder
+          image: "{{ .Values.splunk.image.repository }}"
+          imagePullPolicy: {{ .Values.splunk.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "service.fullname" . }}-splunk-{{ .Values.env }}-config
+          resources:
+            {{- toYaml .Values.splunk.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /applogs/{{ .Chart.Name }}
+              name: {{ include "service.fullname" . }}-app-logs
+            - mountPath: /accesslogs/{{ .Chart.Name }}
+              name: {{ include "service.fullname" . }}-access-logs
+            - mountPath: /opt/splunk/var
+              name: splunkforwarder-temp
+            - mountPath: /etc/splunk/podinfo
+              name: podinfo
+            - mountPath: /splunk_logs
+              name: splunkforwarder-splunk-logs
+      restartPolicy: Always
+      volumes:
+        - emptyDir: {}
+          name: {{ include "service.fullname" . }}-app-logs
+        - emptyDir: {}
+          name: {{ include "service.fullname" . }}-access-logs
+        - emptyDir: {}
+          name: splunkforwarder-temp
+        - downwardAPI:
+            items:
+              - fieldRef:
+                  fieldPath: metadata.labels
+                path: labels
+              - fieldRef:
+                  fieldPath: metadata.uid
+                path: uid
+          name: podinfo
+        - emptyDir: {}
+          name: splunkforwarder-splunk-logs
+    
+
+

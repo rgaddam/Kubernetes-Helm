@@ -1,0 +1,64 @@
+# Default values for service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+env: ${env}
+cluster: ${cluster}
+tag: ${tag}
+repo: ${repo}
+
+env: dev
+cluster: us-west-1a
+
+replicaCount: 1
+
+image:
+  repository: docker.com/develop/service-name
+  pullPolicy: IfNotPresent
+
+resources:
+  limits:
+    cpu: "2"
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  timeoutSeconds: 30
+  periodSeconds: 300
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  timeoutSeconds: 30
+  periodSeconds: 300
+
+splunk:
+  image:
+    repository: docker.com/splunk/splunk-universalforwarder:latest
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      cpu: "1"
+      memory: 256Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: "v1"

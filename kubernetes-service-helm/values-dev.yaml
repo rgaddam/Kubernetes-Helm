@@ -1,0 +1,14 @@
+# yaml file for dev environment
+
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: "2"
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+ingress:
+  enabled: true
